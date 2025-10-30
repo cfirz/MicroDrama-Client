@@ -1,10 +1,12 @@
 import { create } from 'zustand';
+import { getAllWatchedEpisodes, saveWatchHistory } from '../storage';
 
 interface WatchHistoryState {
-\twatchedEpisodes: Set<string>;
+	watchedEpisodes: Set<string>;
 	markAsWatched: (episodeId: string) => void;
 	isWatched: (episodeId: string) => boolean;
 	clearWatchHistory: () => void;
+	hydrate: () => Promise<void>;
 }
 
 export const useWatchHistoryStore = create<WatchHistoryState>((set, get) => ({
@@ -13,9 +15,14 @@ export const useWatchHistoryStore = create<WatchHistoryState>((set, get) => ({
 		const next = new Set(get().watchedEpisodes);
 		next.add(episodeId);
 		set({ watchedEpisodes: next });
+		saveWatchHistory(episodeId, true).catch(() => {});
 	},
 	isWatched: (episodeId: string) => get().watchedEpisodes.has(episodeId),
 	clearWatchHistory: () => set({ watchedEpisodes: new Set<string>() }),
+	hydrate: async () => {
+		const ids = await getAllWatchedEpisodes();
+		set({ watchedEpisodes: new Set(ids) });
+	},
 }));
 
 
