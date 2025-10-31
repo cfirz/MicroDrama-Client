@@ -12,6 +12,7 @@ import EpisodeCard from '../components/EpisodeCard';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ErrorMessage from '../components/ErrorMessage';
 import { useTheme } from '../theme/useTheme';
+import { useLikesStore } from '../stores/useLikesStore';
 
 type Props = StackScreenProps<RootStackParamList, 'ShowDetail'>;
 
@@ -20,6 +21,7 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     const { filterBy, sortBy, orderBy, setFilter, setSort } = useShowStore();
     const showId = route.params.showId;
     const queryClient = useQueryClient();
+    const likeShowLocal = useLikesStore((s) => s.likeShowLocal);
 
     const showQuery = useQuery({ queryKey: ['show', showId], queryFn: () => getShowById(showId) });
     const episodesQuery = useQuery({
@@ -62,6 +64,9 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['show', showId] });
             queryClient.invalidateQueries({ queryKey: ['shows'] });
+        },
+        onSuccess: (_data, ratingValue) => {
+            if (ratingValue === 1) likeShowLocal(showId);
         },
     });
 

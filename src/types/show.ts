@@ -5,8 +5,8 @@ export interface Show {
 	coverUrl: string | null;
 	likes: number;
 	dislikes: number;
-	createdAt: unknown;
-	updatedAt: unknown;
+	createdAt: string; // ISO date string
+	updatedAt: string; // ISO date string
 }
 
 export interface ShowWithEpisodes extends Show {

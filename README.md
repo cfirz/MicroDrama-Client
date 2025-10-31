@@ -45,11 +45,20 @@ A template is provided at `mobile/.env.example`.
 
 ## Navigation
 
-Stack routes (see `src/navigation/AppNavigator.tsx`):
+Navigation structure (see `src/navigation/AppNavigator.tsx`):
 
+**Stack Navigator:**
+- `MainTabs` - Bottom tab navigator (initial route)
 - `ShowList`
 - `ShowDetail` (`{ showId }`)
 - `EpisodePlayer` (`{ showId, episodeId }`)
+
+**Bottom Tab Navigator (MainTabs):**
+- `Home` - Home screen
+- `Surprise` - Surprise content screen
+- `MyList` - User's list screen
+- `Rewards` - Rewards screen (placeholder)
+- `Profile` - Profile screen (placeholder)
 
 ## API Usage
 
@@ -63,7 +72,7 @@ Client calls (see `src/api/*.ts`) expect the server mounted under `/api/v1`:
 ## Tech Stack
 
 - Expo, React Native, TypeScript
-- React Navigation (Stack)
+- React Navigation (Stack + Bottom Tabs)
 - @tanstack/react-query
 - Zustand
 - expo-video (HLS playback)

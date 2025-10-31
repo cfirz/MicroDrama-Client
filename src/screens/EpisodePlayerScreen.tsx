@@ -10,12 +10,14 @@ import { useWatchHistoryStore } from '../stores/useWatchHistoryStore';
 import { useTheme } from '../theme/useTheme';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Video } from 'expo-video';
+import { useSessionStore } from '../stores/useSessionStore';
 
 type Props = StackScreenProps<RootStackParamList, 'EpisodePlayer'>;
 
 const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 	const { colors } = useTheme();
-	const { setCurrentEpisode } = useShowStore();
+    const { setCurrentEpisode } = useShowStore();
+    const markShowStarted = useSessionStore((s) => s.markShowStarted);
 	const { markAsWatched } = useWatchHistoryStore();
 	const { showId, episodeId } = route.params;
 
@@ -30,7 +32,7 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 		queryFn: () => getShowEpisodes(showId, { sortBy: 'order', orderBy: 'asc' }),
 	});
 
-	useEffect(() => {
+    useEffect(() => {
 		if (!episodes.length) return;
 		const idx = episodes.findIndex((e) => e.id === episodeId);
 		setCurrentIndex(idx >= 0 ? idx : 0);
@@ -46,11 +48,15 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 		return currentIndex + 1 < episodes.length ? episodes[currentIndex + 1] : null;
 	}, [episodes, currentIndex]);
 
-	useEffect(() => {
+    useEffect(() => {
 		setCurrentEpisode(current ?? null);
 		setHasTriggeredPreload(false);
 		setPreloadedIndex(null);
-	}, [current, setCurrentEpisode]);
+        if (current) {
+            // Track that this show's playback started during this session
+            markShowStarted(current.showId);
+        }
+    }, [current, setCurrentEpisode, markShowStarted]);
 
 	const uri = current ? `https://stream.mux.com/${current.muxPlaybackId}.m3u8` : undefined;
 	const nextUri = next ? `https://stream.mux.com/${next.muxPlaybackId}.m3u8` : undefined;

@@ -29,11 +29,46 @@ function resolveApiBaseUrl(): string {
 
 const baseURL = resolveApiBaseUrl();
 
+// Log resolved API base URL for debugging
+console.log('[API] Base URL resolved to:', baseURL);
+
 export const http = axios.create({
 	baseURL,
 	headers: {
 		'Content-Type': 'application/json',
 	},
 });
+
+// Add request interceptor for logging
+http.interceptors.request.use(
+	(config) => {
+		console.log('[API] Request:', config.method?.toUpperCase(), config.url, config.baseURL);
+		return config;
+	},
+	(error) => {
+		console.error('[API] Request error:', error);
+		return Promise.reject(error);
+	}
+);
+
+// Add response interceptor for logging
+http.interceptors.response.use(
+	(response) => {
+		console.log('[API] Response:', response.status, response.config.url);
+		return response;
+	},
+	(error) => {
+		console.error('[API] Response error:', {
+			url: error.config?.url,
+			method: error.config?.method,
+			status: error.response?.status,
+			statusText: error.response?.statusText,
+			data: error.response?.data,
+			message: error.message,
+			baseURL: error.config?.baseURL,
+		});
+		return Promise.reject(error);
+	}
+);
 
 
