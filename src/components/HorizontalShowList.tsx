@@ -8,14 +8,20 @@ interface HorizontalShowListProps {
     shows: Show[];
     onPressShow: (show: Show) => void;
     variant?: 'tile' | 'card';
+    thumbnailSize?: 'large' | 'small';
 }
 
 const { width } = Dimensions.get('window');
-const TILE_WIDTH = Math.min(180, Math.floor(width * 0.48));
-const TILE_HEIGHT = Math.floor(TILE_WIDTH * 1.4);
+const LARGE_TILE_WIDTH = Math.min(180, Math.floor(width * 0.48));
+const LARGE_TILE_HEIGHT = Math.floor(LARGE_TILE_WIDTH * 1.4);
+const SMALL_TILE_WIDTH = Math.floor(LARGE_TILE_WIDTH * 0.8);
+const SMALL_TILE_HEIGHT = Math.floor(SMALL_TILE_WIDTH * 1.4);
 
-const HorizontalShowList: React.FC<HorizontalShowListProps> = ({ title, shows, onPressShow, variant = 'tile' }) => {
+const HorizontalShowList: React.FC<HorizontalShowListProps> = ({ title, shows, onPressShow, variant = 'tile', thumbnailSize = 'large' }) => {
     const { colors, spacing } = useTheme();
+    const isSmall = thumbnailSize === 'small';
+    const tileWidth = isSmall ? SMALL_TILE_WIDTH : LARGE_TILE_WIDTH;
+    const tileHeight = isSmall ? SMALL_TILE_HEIGHT : LARGE_TILE_HEIGHT;
 
     return (
         <View style={{ marginBottom: spacing.xl }}>
@@ -29,11 +35,11 @@ const HorizontalShowList: React.FC<HorizontalShowListProps> = ({ title, shows, o
                         {variant === 'tile' ? (
                             <View>
                                 {item.coverUrl ? (
-                                    <Image source={{ uri: item.coverUrl }} style={[styles.tile, { width: TILE_WIDTH, height: TILE_HEIGHT }]} />
+                                    <Image source={{ uri: item.coverUrl }} style={[styles.tile, { width: tileWidth, height: tileHeight }]} />
                                 ) : (
-                                    <View style={[styles.tile, styles.tileFallback, { width: TILE_WIDTH, height: TILE_HEIGHT }]} />
+                                    <View style={[styles.tile, styles.tileFallback, { width: tileWidth, height: tileHeight }]} />
                                 )}
-                                <Text numberOfLines={1} style={{ color: colors.text, marginTop: spacing.xs, width: TILE_WIDTH }}>
+                                <Text numberOfLines={1} style={{ color: colors.text, marginTop: spacing.xs, width: tileWidth }}>
                                     {item.title}
                                 </Text>
                             </View>

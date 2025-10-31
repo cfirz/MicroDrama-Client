@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './theme/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,11 +15,13 @@ export default function App() {
 	}, [hydrate]);
 
 	return (
-		<ThemeProvider>
-			<QueryClientProvider client={queryClient}>
-				<AppNavigator />
-			</QueryClientProvider>
-		</ThemeProvider>
+		<SafeAreaProvider>
+			<ThemeProvider>
+				<QueryClientProvider client={queryClient}>
+					<AppNavigator />
+				</QueryClientProvider>
+			</ThemeProvider>
+		</SafeAreaProvider>
 	);
 }
 

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, TextInput, ScrollView, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { getShows } from '../api/shows.api';
 import type { Show } from '../types/show';
@@ -20,12 +21,14 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const { colors, spacing } = useTheme();
+    const insets = useSafeAreaInsets();
     const [query, setQuery] = useState('');
     const [focused, setFocused] = useState(false);
     const likeState = useLikesStore();
     const sessionState = useSessionStore();
 
-    const { data: shows = [], isLoading, isError, refetch } = useQuery<Show[]>({ queryKey: ['shows'], queryFn: getShows });
+    const { data, isLoading, isError, refetch } = useQuery<Show[]>({ queryKey: ['shows'], queryFn: getShows });
+    const shows: Show[] = (data ?? []) as Show[];
 
     const onPressShow = (show: Show) => navigation.navigate('ShowDetail', { showId: show.id });
 
@@ -71,7 +74,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
     return (
         <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xl }}>
-            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg + insets.top }}>
                 <TextInput
                     placeholder="Search shows…"
                     placeholderTextColor={colors.muted}
@@ -101,19 +104,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {featured.length > 0 && (
-                <HorizontalShowList title="Featured" shows={featured} onPressShow={onPressShow} variant="tile" />
+                <HorizontalShowList title="Featured" shows={featured} onPressShow={onPressShow} variant="tile" thumbnailSize="large" />
             )}
             {continueWatching.length > 0 && (
-                <HorizontalShowList title="Continue Watching" shows={continueWatching} onPressShow={onPressShow} variant="tile" />
+                <HorizontalShowList title="Continue Watching" shows={continueWatching} onPressShow={onPressShow} variant="tile" thumbnailSize="small" />
             )}
             {newReleases.length > 0 && (
-                <HorizontalShowList title="New Releases" shows={newReleases} onPressShow={onPressShow} variant="tile" />
+                <HorizontalShowList title="New Releases" shows={newReleases} onPressShow={onPressShow} variant="tile" thumbnailSize="small" />
             )}
             {trending.length > 0 && (
-                <HorizontalShowList title="Trending" shows={trending} onPressShow={onPressShow} variant="tile" />
+                <HorizontalShowList title="Trending" shows={trending} onPressShow={onPressShow} variant="tile" thumbnailSize="small" />
             )}
             {liked.length > 0 && (
-                <HorizontalShowList title="Liked" shows={liked} onPressShow={onPressShow} variant="tile" />
+                <HorizontalShowList title="Liked" shows={liked} onPressShow={onPressShow} variant="tile" thumbnailSize="small" />
             )}
         </ScrollView>
     );

@@ -1,9 +1,10 @@
 import { http } from './http';
 import { ShowSchema, ShowWithEpisodesSchema, EpisodeWithWatchSchema } from './schemas';
+import type { Show } from '../types/show';
 
-export async function getShows() {
+export async function getShows(): Promise<Show[]> {
 	const res = await http.get('/api/v1/shows');
-	return ShowSchema.array().parse(res.data);
+	return ShowSchema.array().parse(res.data) as Show[];
 }
 
 export async function getShowById(id: string) {
