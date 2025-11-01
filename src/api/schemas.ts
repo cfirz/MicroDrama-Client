@@ -17,6 +17,7 @@ export const EpisodeWithWatchSchema = z.object({
 	title: z.string(),
 	order: z.number(),
 	muxPlaybackId: z.string(),
+	muxPlaybackUrl: z.string().optional(), // Signed playback URL from server
 	durationSec: z.number(),
 	thumbnailUrl: z.string().nullable(),
 	createdAt: z.string(),

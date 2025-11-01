@@ -4,6 +4,7 @@ export interface Episode {
 	title: string;
 	order: number;
 	muxPlaybackId: string;
+	muxPlaybackUrl?: string; // Signed playback URL from server
 	durationSec: number;
 	thumbnailUrl: string | null;
 	createdAt: unknown;

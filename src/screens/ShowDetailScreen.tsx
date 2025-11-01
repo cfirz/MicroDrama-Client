@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getShowById, getShowEpisodes } from '../api/shows.api';
 import { likeShow } from '../api/ratings.api';
 import { useShowStore } from '../stores/useShowStore';
+import type { EpisodeWithWatchStatus } from '../types/episode';
 import FilterButtons from '../components/FilterButtons';
 import SortPicker from '../components/SortPicker';
 import EpisodeCard from '../components/EpisodeCard';
@@ -13,6 +15,7 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import ErrorMessage from '../components/ErrorMessage';
 import { useTheme } from '../theme/useTheme';
 import { useLikesStore } from '../stores/useLikesStore';
+import { useWatchHistoryStore } from '../stores/useWatchHistoryStore';
 
 type Props = StackScreenProps<RootStackParamList, 'ShowDetail'>;
 
@@ -22,11 +25,16 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     const showId = route.params.showId;
     const queryClient = useQueryClient();
     const likeShowLocal = useLikesStore((s) => s.likeShowLocal);
+    const watchedEpisodes = useWatchHistoryStore((s) => s.watchedEpisodes);
+    const isWatched = useWatchHistoryStore((s) => s.isWatched);
 
     const showQuery = useQuery({ queryKey: ['show', showId], queryFn: () => getShowById(showId) });
+    // For watched/unwatched filtering, fetch all episodes and filter client-side
+    // Server-side filtering doesn't account for client-side session watch status
+    const serverFilterBy = filterBy === 'watched' || filterBy === 'unwatched' ? 'all' : filterBy;
     const episodesQuery = useQuery({
-        queryKey: ['episodes', showId, filterBy, sortBy, orderBy],
-        queryFn: () => getShowEpisodes(showId, { filterBy, sortBy, orderBy }),
+        queryKey: ['episodes', showId, serverFilterBy, sortBy, orderBy],
+        queryFn: () => getShowEpisodes(showId, { filterBy: serverFilterBy, sortBy, orderBy }),
     });
 
     const rateMutation = useMutation({
@@ -88,7 +96,7 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     <TouchableOpacity
                         accessibilityRole="button"
                         onPress={() => rateMutation.mutate(1)}
-                        disabled={rateMutation.isLoading}
+                        disabled={rateMutation.isPending}
                         style={{
                             borderWidth: 1,
                             borderColor: '#ccc',
@@ -103,7 +111,7 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     <TouchableOpacity
                         accessibilityRole="button"
                         onPress={() => rateMutation.mutate(0)}
-                        disabled={rateMutation.isLoading}
+                        disabled={rateMutation.isPending}
                         style={{
                             borderWidth: 1,
                             borderColor: '#ccc',
@@ -117,37 +125,64 @@ const ShowDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
             </View>
         );
-    }, [showQuery.data, colors.text, colors.muted, colors.primary, spacing.lg, spacing.sm, spacing.md, filterBy, sortBy, orderBy, setFilter, setSort, rateMutation.isLoading]);
+    }, [showQuery.data, colors.text, colors.muted, colors.primary, spacing.lg, spacing.sm, spacing.md, filterBy, sortBy, orderBy, setFilter, setSort, rateMutation.isPending]);
+
+    // Merge client-side watch status with server data (client-side takes precedence for session)
+    // NOTE: This must be called before any early returns to follow Rules of Hooks
+    const episodes = useMemo(() => {
+        const serverEpisodes = episodesQuery.data ?? [];
+        const merged = serverEpisodes.map((ep): EpisodeWithWatchStatus => ({
+            id: ep.id,
+            showId: ep.showId,
+            title: ep.title,
+            order: ep.order,
+            muxPlaybackId: ep.muxPlaybackId,
+            muxPlaybackUrl: ep.muxPlaybackUrl,
+            durationSec: ep.durationSec,
+            thumbnailUrl: ep.thumbnailUrl,
+            createdAt: ep.createdAt,
+            updatedAt: ep.updatedAt,
+            watched: isWatched(ep.id) || ep.watched, // Client-side status OR server status
+        }));
+        
+        // Apply client-side filtering for watched/unwatched
+        if (filterBy === 'watched') {
+            return merged.filter((ep) => ep.watched);
+        } else if (filterBy === 'unwatched') {
+            return merged.filter((ep) => !ep.watched);
+        }
+        return merged;
+    }, [episodesQuery.data, watchedEpisodes, filterBy, isWatched]);
 
     if (showQuery.isLoading || episodesQuery.isLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.background }]}> 
+            <SafeAreaView style={[styles.center, { backgroundColor: colors.background, flex: 1 }]}> 
                 <LoadingSkeleton count={6} />
-            </View>
+            </SafeAreaView>
         );
     }
 
     if (showQuery.isError || episodesQuery.isError) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={[styles.center, { backgroundColor: colors.background, flex: 1 }]}>
                 <ErrorMessage message="Failed to load show." onRetry={() => { showQuery.refetch(); episodesQuery.refetch(); }} />
-            </View>
+            </SafeAreaView>
         );
     }
 
-    const episodes = episodesQuery.data ?? [];
-
     return (
-        <FlatList
-            data={episodes}
-            keyExtractor={(e) => e.id}
-            renderItem={({ item }) => (
-                <EpisodeCard episode={item} onPress={() => navigation.navigate('EpisodePlayer', { showId, episodeId: item.id })} />
-            )}
-            ListHeaderComponent={header}
-            style={{ backgroundColor: colors.background }}
-            contentContainerStyle={{ paddingHorizontal: spacing.lg }}
-        />
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+            <FlatList
+                data={episodes}
+                keyExtractor={(e) => e.id}
+                renderItem={({ item }) => (
+                    <EpisodeCard episode={item} onPress={() => navigation.navigate('EpisodePlayer', { showId, episodeId: item.id })} />
+                )}
+                ListHeaderComponent={header}
+                style={{ backgroundColor: colors.background }}
+                contentContainerStyle={{ paddingHorizontal: spacing.lg }}
+            />
+        </SafeAreaView>
     );
 };
 
