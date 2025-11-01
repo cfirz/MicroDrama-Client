@@ -147,18 +147,6 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 	const swipeDirection = useRef<'up' | 'down' | null>(null);
 	const isAnimating = useRef(false);
 
-	// Debug logging
-	useEffect(() => {
-		if (current) {
-			console.log('[EpisodePlayer] Current episode:', {
-				id: current.id,
-				title: current.title,
-				muxPlaybackId: current.muxPlaybackId,
-				uri,
-			});
-		}
-	}, [current, uri]);
-
 	// Track if we need to auto-play after source is ready
 	const shouldAutoPlayRef = useRef(false);
 	const pendingUriRef = useRef<string | null>(null);
@@ -181,53 +169,33 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 		}, 1000);
 	}, []);
 
-	// Listen to player status for debugging and auto-play when ready
+	// Listen to player status and auto-play when ready
 	useEffect(() => {
 		if (!player) return;
 
 		const handleStatusChange = (payload: { status: string }) => {
-			console.log('[EpisodePlayer] Player status:', payload.status);
-			
-			// Log error details when status is error
 			if (payload.status === 'error') {
-				const errorDetails = {
-					payload: JSON.stringify(payload, null, 2),
-					playerError: (player as any).error,
-					currentUri: currentUriRef.current,
-					duration: player.duration,
-				};
-				console.error('[EpisodePlayer] Player error - Full details:', errorDetails);
 				setPlayerError(`Video playback error. URI: ${currentUriRef.current || 'none'}`);
 			} else if (payload.status === 'readyToPlay') {
-				// Clear error when player becomes ready
 				setPlayerError(null);
 			}
 			
 			// Auto-play when player becomes ready
 			if (payload.status === 'readyToPlay' && shouldAutoPlayRef.current && pendingUriRef.current) {
-				console.log('[EpisodePlayer] Player is ready, attempting to play...');
 				shouldAutoPlayRef.current = false;
 				pendingUriRef.current = null;
 				
 				try {
-					// Optimistically set isPlaying to true before play() to ensure UI is correct
 					setIsPlaying(true);
 					player.play();
-					console.log('[EpisodePlayer] Video play command sent successfully');
-					// Don't show controls immediately - let playingChange event confirm play state first
-					// Controls will be shown when user taps the video or when playingChange confirms
 				} catch (err) {
-					console.error('[EpisodePlayer] Failed to play:', err);
-					// Revert isPlaying on error
 					setIsPlaying(false);
 				}
 			}
 		};
 
 		const handlePlayingChange = (payload: { isPlaying: boolean }) => {
-			console.log('[EpisodePlayer] Player isPlaying:', payload.isPlaying);
 			setIsPlaying(payload.isPlaying);
-			// When video starts playing, show controls for 1 second then auto-hide
 			if (payload.isPlaying) {
 				showControlsWithAutoHide();
 			}
@@ -245,13 +213,11 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 	// Update player source when episode changes and ensure it plays automatically
 	useEffect(() => {
 		if (!uri || !player || !current?.muxPlaybackId) {
-			if (!uri) console.log('[EpisodePlayer] No URI yet, waiting...');
 			return;
 		}
 		
 		// Only replace if URI actually changed (skip if it's the same or if current is empty/placeholder)
 		if (currentUriRef.current === uri) {
-			console.log('[EpisodePlayer] URI unchanged, skipping replace');
 			return;
 		}
 
@@ -261,11 +227,8 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 		// If a replace is already in progress, just update the target and return
 		// The replace completion will trigger a re-check via replaceCheckTrigger
 		if (isReplacingRef.current) {
-			console.log('[EpisodePlayer] Replace already in progress, updating target to:', uri);
 			return;
 		}
-
-		console.log('[EpisodePlayer] Setting player source:', uri);
 		
 		const updateSource = async () => {
 			// Mark that we're replacing
@@ -282,9 +245,6 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 					}
 				} catch (pauseErr) {
 					// Player might already be paused or released - continue anyway
-					if (__DEV__) {
-						console.debug('[EpisodePlayer] Failed to pause before replace (non-critical):', pauseErr);
-					}
 				}
 
 				// Reset playing state when switching episodes
@@ -301,30 +261,22 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 				// Check if target changed after replace
 				const finalTarget = targetUriRef.current;
 				if (finalTarget && finalTarget !== targetUri) {
-					console.log('[EpisodePlayer] Target URI changed after replace, will process new target');
-					currentUriRef.current = undefined; // Force re-process
+					currentUriRef.current = undefined;
 					isReplacingRef.current = false;
-					// Trigger re-check
 					setReplaceCheckTrigger((prev) => prev + 1);
 					return;
 				}
 
 				currentUriRef.current = targetUri;
-				console.log('[EpisodePlayer] Player source replaced successfully with:', targetUri);
 				
 				// If player is already ready, play immediately
 				if (player.status === 'readyToPlay') {
-					console.log('[EpisodePlayer] Player already ready, attempting to play...');
 					shouldAutoPlayRef.current = false;
 					pendingUriRef.current = null;
 					try {
-						// Optimistically set isPlaying to true before play() to ensure UI is correct
 						setIsPlaying(true);
 						player.play();
-						console.log('[EpisodePlayer] Video play command sent successfully');
 					} catch (err) {
-						console.error('[EpisodePlayer] Failed to play:', err);
-						// Revert isPlaying on error
 						setIsPlaying(false);
 					}
 				}
@@ -332,17 +284,14 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 				// Check if there's a newer target queued after successful replace
 				const queuedTarget = targetUriRef.current;
 				if (queuedTarget && queuedTarget !== targetUri) {
-					console.log('[EpisodePlayer] New target URI queued, will process next');
-					currentUriRef.current = undefined; // Force re-process
+					currentUriRef.current = undefined;
 					setReplaceCheckTrigger((prev) => prev + 1);
 				}
 			} catch (err) {
-				console.error('[EpisodePlayer] Failed to replace source:', err);
 				// Check if we should retry with a new target
 				const latestTarget = targetUriRef.current;
 				if (latestTarget && latestTarget !== targetUri) {
-					console.log('[EpisodePlayer] Will retry with new target URI');
-					currentUriRef.current = undefined; // Force re-process
+					currentUriRef.current = undefined;
 					setReplaceCheckTrigger((prev) => prev + 1);
 				} else {
 					currentUriRef.current = undefined;
@@ -451,25 +400,19 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 	// Update preload player source when next episode changes
 	useEffect(() => {
 		if (!nextUri || !preloadPlayer) return;
-		preloadPlayer.replaceAsync({ uri: nextUri }).catch((err) => {
-			console.error('[EpisodePlayer] Failed to replace preload source:', err);
-		});
+		preloadPlayer.replaceAsync({ uri: nextUri }).catch(() => {});
 	}, [nextUri, preloadPlayer]);
 
 	// Update next player source for swipe animation
 	useEffect(() => {
 		if (!nextUri || !nextPlayer) return;
-		nextPlayer.replaceAsync({ uri: nextUri }).catch((err) => {
-			console.error('[EpisodePlayer] Failed to replace next player source:', err);
-		});
+		nextPlayer.replaceAsync({ uri: nextUri }).catch(() => {});
 	}, [nextUri, nextPlayer]);
 
 	// Update prev player source for swipe animation
 	useEffect(() => {
 		if (!prevUri || !prevPlayer) return;
-		prevPlayer.replaceAsync({ uri: prevUri }).catch((err) => {
-			console.error('[EpisodePlayer] Failed to replace prev player source:', err);
-		});
+		prevPlayer.replaceAsync({ uri: prevUri }).catch(() => {});
 	}, [prevUri, prevPlayer]);
 
 	// Listen to player events for preloading
@@ -518,17 +461,13 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 			// Screen is focused - video can play
 			return () => {
 				// Screen is blurred - pause video
-				// Note: Players may already be released when cleanup runs, so we handle errors gracefully
+				// Players may already be released when cleanup runs, so we handle errors gracefully
 				if (player && isPlaying) {
 					try {
 						player.pause();
 						setIsPlaying(false);
 					} catch (err) {
 						// Player may already be released - this is expected during cleanup
-						// Only log if in development mode to avoid noise in production
-						if (__DEV__) {
-							console.debug('[EpisodePlayer] Player already released, skipping pause');
-						}
 					}
 				}
 				// Also pause preload player
@@ -537,9 +476,6 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 						preloadPlayer.pause();
 					} catch (err) {
 						// Preload player may already be released - this is expected during cleanup
-						if (__DEV__) {
-							console.debug('[EpisodePlayer] Preload player already released, skipping pause');
-						}
 					}
 				}
 			};
@@ -562,7 +498,6 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 			// After toggling, show controls and auto-hide after 1 second
 			showControlsWithAutoHide();
 		} catch (err) {
-			console.error('[EpisodePlayer] Failed to toggle play/pause:', err);
 			// Revert to previous state on error
 			setIsPlaying(wasPlaying);
 		}
@@ -697,7 +632,6 @@ const EpisodePlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 						{playerError && (
 							<View style={styles.errorContainer}>
 								<Text style={styles.errorText}>{playerError}</Text>
-								<Text style={styles.errorSubtext}>Check logs for details</Text>
 							</View>
 						)}
 					</View>

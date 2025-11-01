@@ -29,9 +29,6 @@ function resolveApiBaseUrl(): string {
 
 const baseURL = resolveApiBaseUrl();
 
-// Log resolved API base URL for debugging
-console.log('[API] Base URL resolved to:', baseURL);
-
 export const http = axios.create({
 	baseURL,
 	headers: {
@@ -39,10 +36,15 @@ export const http = axios.create({
 	},
 });
 
-// Add request interceptor for logging
+// Request interceptor for logging
 http.interceptors.request.use(
 	(config) => {
-		console.log('[API] Request:', config.method?.toUpperCase(), config.url, config.baseURL);
+		console.log('[API] Request:', {
+			method: config.method?.toUpperCase(),
+			url: config.url,
+			baseURL: config.baseURL,
+			data: config.data ? JSON.stringify(config.data, null, 2) : undefined,
+		});
 		return config;
 	},
 	(error) => {
@@ -51,10 +53,14 @@ http.interceptors.request.use(
 	}
 );
 
-// Add response interceptor for logging
+// Response interceptor for logging
 http.interceptors.response.use(
 	(response) => {
-		console.log('[API] Response:', response.status, response.config.url);
+		console.log('[API] Response:', {
+			status: response.status,
+			url: response.config.url,
+			data: response.data ? JSON.stringify(response.data, null, 2) : undefined,
+		});
 		return response;
 	},
 	(error) => {
@@ -63,7 +69,7 @@ http.interceptors.response.use(
 			method: error.config?.method,
 			status: error.response?.status,
 			statusText: error.response?.statusText,
-			data: error.response?.data,
+			data: error.response?.data ? JSON.stringify(error.response.data, null, 2) : undefined,
 			message: error.message,
 			baseURL: error.config?.baseURL,
 		});
